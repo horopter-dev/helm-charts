@@ -1,0 +1,58 @@
+---
+suite: the migrate hook
+templates:
+  - templates/job-migrate.yaml
+release:
+  name: hp
+set:
+  database.existingSecret: horopter-db-app
+  imagePullSecrets: [{name: ghcr-pull}]
+  image.tag: v0.3.0
+tests:
+  - it: runs before install and upgrade, ahead of everything else
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "-10"
+      - equal:
+          path: metadata.annotations["helm.sh/hook-delete-policy"]
+          value: before-hook-creation,hook-succeeded
+
+  - it: migrates with the daemons' own tag
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/horopter-dev/horopter-migrate:v0.3.0
+
+  - it: can pull on a first install without a ServiceAccount
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets
+          value:
+            - name: ghcr-pull
+      - notExists:
+          path: spec.template.spec.serviceAccountName
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+
+  - it: reads the same database secret
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_URL
+            valueFrom:
+              secretKeyRef: {name: horopter-db-app, key: uri}
+
+  - it: fails fast instead of retrying a broken migration
+    asserts:
+      - equal:
+          path: spec.backoffLimit
+          value: 0
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: Never
