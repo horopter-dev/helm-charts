@@ -1,0 +1,49 @@
+---
+name: Release Please
+
+# Keeps one release PR open on main, bumping charts/horopter/Chart.yaml's version and its
+# CHANGELOG.md from the conventional commits that touched the chart. Merging it creates the
+# GitHub release horopter-<version>, and release.yaml publishes the chart on that event.
+#
+# horopter's own release workflow creates a draft and pushes the tag in a later step, because
+# GoReleaser attaches assets before publishing. A chart has no release assets: it goes to an
+# OCI registry. So the release is published at once, and its tag exists as soon as it does —
+# none of horopter's draft-ordering workaround is needed here.
+#
+# The App token, not GITHUB_TOKEN, is what lets the release PR run CI and the published release
+# start release.yaml: events caused by GITHUB_TOKEN start no workflows.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    if: github.repository_owner == 'horopter-dev'
+    steps:
+      - id: create_token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.SEMANTIC_RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SEMANTIC_RELEASE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          # This repository only, and only what release-please needs: contents (branches,
+          # tags, releases) and pull-requests (the release PR and its labels).
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.create_token.outputs.token }}
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
