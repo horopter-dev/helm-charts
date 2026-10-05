@@ -1,0 +1,24 @@
+{{- range $name := list "ingress" "egress" }}
+{{- $d := index $.Values $name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "horopter.componentName" (dict "ctx" $ "component" $name) }}
+  labels:
+    {{- include "horopter.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "horopter.selectorLabels" (dict "ctx" $ "component" $name) | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $d.port }}
+      targetPort: http
+      protocol: TCP
+    - name: metrics
+      port: {{ $.Values.metrics.port }}
+      targetPort: metrics
+      protocol: TCP
+{{- end }}

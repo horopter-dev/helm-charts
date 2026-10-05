@@ -1,0 +1,71 @@
+---
+suite: pods are hardened
+templates:
+  - templates/deployment.yaml
+  - templates/job-migrate.yaml
+release:
+  name: hp
+set:
+  database.existingSecret: db
+tests:
+  # Pod Security "restricted" rejects a pod missing any of these, so a dropped field is a pod the
+  # API refuses in an enforcing namespace, and silently lost hardening anywhere else.
+  - it: hardens both daemons' pods and containers
+    template: templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+
+  - it: hardens the migrate pod like the daemons
+    template: templates/job-migrate.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+
+  - it: pulls only when the image is absent
+    template: templates/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: IfNotPresent
+
+  # Without a deadline, a migration stuck on a lock outlives Helm's timeout and keeps holding it.
+  - it: kills a migration that outlives its deadline
+    template: templates/job-migrate.yaml
+    asserts:
+      - equal:
+          path: spec.activeDeadlineSeconds
+          value: 600
+
+  - it: labels the migrate pod as migrate, so no daemon Service selects it
+    template: templates/job-migrate.yaml
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: migrate

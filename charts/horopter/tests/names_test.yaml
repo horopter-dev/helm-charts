@@ -1,0 +1,102 @@
+---
+suite: names follow the release
+templates:
+  - templates/deployment.yaml
+  - templates/service.yaml
+  - templates/servicemonitor.yaml
+release:
+  name: hp
+set:
+  database.existingSecret: db
+  fullnameOverride: parent-tl
+  serviceMonitor.enabled: true
+tests:
+  - it: renames both Deployments
+    template: templates/deployment.yaml
+    asserts:
+      - equal:
+          path: metadata.name
+          value: parent-tl-ingress
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: parent-tl-egress
+        documentIndex: 1
+
+  - it: renames both Services
+    template: templates/service.yaml
+    asserts:
+      - equal:
+          path: metadata.name
+          value: parent-tl-ingress
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: parent-tl-egress
+        documentIndex: 1
+
+  # The ServiceMonitor and the Services render from different templates, so each side is
+  # pinned to the same literal values; a drift in either helper breaks one of the two tests.
+  - it: labels both Services with what the ServiceMonitor selects
+    template: templates/service.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: horopter
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: hp
+        documentIndex: 1
+
+  - it: selects exactly those labels
+    template: templates/servicemonitor.yaml
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: horopter
+            app.kubernetes.io/instance: hp
+      - equal:
+          path: metadata.name
+          value: parent-tl
+
+  - it: keeps Services and selector agreeing under nameOverride
+    template: templates/service.yaml
+    set:
+      nameOverride: tl
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: tl
+        documentIndex: 1
+
+  - it: selects the overridden name
+    template: templates/servicemonitor.yaml
+    set:
+      nameOverride: tl
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/name"]
+          value: tl
+
+  - it: truncates a long fullnameOverride to 63
+    template: templates/servicemonitor.yaml
+    set:
+      fullnameOverride: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    asserts:
+      - equal:
+          path: metadata.name
+          value: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+  - it: does not repeat the chart name in a release named for it
+    template: templates/deployment.yaml
+    release:
+      name: horopter-prod
+    set:
+      fullnameOverride: ""
+    asserts:
+      - equal:
+          path: metadata.name
+          value: horopter-prod-ingress
+        documentIndex: 0

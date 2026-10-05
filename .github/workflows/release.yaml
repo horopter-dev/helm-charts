@@ -1,0 +1,59 @@
+---
+name: Release
+
+# Publishes the chart to oci://ghcr.io/horopter-dev/charts/horopter when Release Please
+# publishes a horopter-<version> release (see release-please.yaml).
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    if: startsWith(github.ref_name, 'horopter-')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install helm
+        env:
+          HELM_SHA256: 86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb
+        run: |
+          set -euo pipefail
+          curl -fsSL -o helm.tgz https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz
+          echo "${HELM_SHA256}  helm.tgz" | sha256sum -c -
+          sudo tar -xzf helm.tgz -C /usr/local/bin --strip-components=1 linux-amd64/helm
+          rm -f helm.tgz
+
+      - name: Refuse a tag that does not match Chart.yaml
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          want="horopter-$(helm show chart charts/horopter | sed -n 's/^version: //p')"
+          if [ "$TAG" != "$want" ]; then
+            echo "::error::tag $TAG does not match Chart.yaml ($want)"
+            exit 1
+          fi
+
+      - name: Package and push
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          helm package charts/horopter
+          echo "$GHCR_TOKEN" | helm registry login ghcr.io -u "$ACTOR" --password-stdin
+          helm push horopter-*.tgz oci://ghcr.io/horopter-dev/charts

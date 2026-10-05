@@ -1,0 +1,46 @@
+{{- include "horopter.checkFloor" . }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "horopter.componentName" (dict "ctx" . "component" "migrate") }}
+  labels:
+    {{- include "horopter.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    # A hook runs before the release's ordinary resources exist, which is why this pod spec
+    # carries its own pull secrets rather than inheriting them from a ServiceAccount.
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ .Values.migrate.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.migrate.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "horopter.selectorLabels" (dict "ctx" . "component" "migrate") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      {{- include "horopter.imagePullSecrets" . | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: {{ include "horopter.image" (dict "ctx" . "name" "migrate") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "horopter: database.existingSecret is required — name an existing Secret holding the Postgres URI" .Values.database.existingSecret }}
+                  key: {{ .Values.database.key }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]

@@ -1,0 +1,58 @@
+---
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  registry: ghcr.io/horopter-dev
+  # Defaults to the chart's appVersion. The chart refuses a semver tag below v0.2.0.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Existing kubernetes.io/dockerconfigjson Secrets, in the pod spec's own shape:
+# [{name: ghcr-pull}]. The chart creates none.
+imagePullSecrets: []
+
+database:
+  # Required: an existing Secret holding the Postgres connection URI.
+  existingSecret: ""
+  # The key CloudNativePG's generated application Secret uses.
+  key: uri
+
+telemetry:
+  # OTLP/HTTP traces URL, used as-is, so it includes the signal path:
+  # http://otel-collector.otel.svc.cluster.local:4318/v1/traces. The chart refuses a URL with
+  # no path, which the exporter would POST to "/".
+  # Empty disables tracing. Metrics are always served for scraping on metrics.port.
+  tracesEndpoint: ""
+
+metrics:
+  port: 9464
+
+ingress:
+  replicaCount: 1
+  port: 8080
+  resources: {}
+
+egress:
+  replicaCount: 1
+  port: 8081
+  resources: {}
+  # Exposure: at most one of httpRoute and kubernetesIngress.
+  httpRoute:
+    enabled: false
+    parentRefs: []
+    hostnames: []
+  kubernetesIngress:
+    enabled: false
+    className: ""
+    host: ""
+    tls: []
+
+serviceMonitor:
+  enabled: false
+  labels: {}
+  interval: ""
+
+migrate:
+  backoffLimit: 0
+  activeDeadlineSeconds: 600

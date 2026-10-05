@@ -1,0 +1,31 @@
+---
+suite: the daemon services
+templates:
+  - templates/service.yaml
+release:
+  name: hp
+set:
+  database.existingSecret: db
+tests:
+  - it: exposes http and a metrics port named for the ServiceMonitor
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: metadata.name
+          value: hp-horopter-ingress
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - contains:
+          path: spec.ports
+          content: {name: http, port: 8080, targetPort: http, protocol: TCP}
+      - contains:
+          path: spec.ports
+          content: {name: metrics, port: 9464, targetPort: metrics, protocol: TCP}
+
+  - it: selects only its own daemon
+    documentIndex: 1
+    asserts:
+      - equal:
+          path: spec.selector["app.kubernetes.io/component"]
+          value: egress
