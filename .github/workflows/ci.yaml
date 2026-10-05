@@ -1,0 +1,94 @@
+---
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  check:
+    name: lint, unit tests and schema
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Checksums are pinned here, not fetched beside the artefact: a checksum from the same
+      # host is re-signed by whoever replaces the artefact. Bump with mise.toml.
+      - name: Install helm, kubeconform and task
+        env:
+          HELM_SHA256: 86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb
+          KUBECONFORM_SHA256: 9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883
+        run: |
+          set -euo pipefail
+          curl -fsSL -o helm.tgz https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz
+          echo "${HELM_SHA256}  helm.tgz" | sha256sum -c -
+          sudo tar -xzf helm.tgz -C /usr/local/bin --strip-components=1 linux-amd64/helm
+          curl -fsSL -o kc.tgz \
+            https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz
+          echo "${KUBECONFORM_SHA256}  kc.tgz" | sha256sum -c -
+          sudo tar -xzf kc.tgz -C /usr/local/bin kubeconform
+          sudo snap install task --classic
+          rm -f helm.tgz kc.tgz
+
+      - uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece # v3.0.0
+        with:
+          prek-version: 0.5.4
+
+  install:
+    name: install into kind
+    runs-on: ubuntu-24.04
+    needs: check
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
+        with:
+          version: v0.33.0
+          node_image: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+
+      - name: Install helm
+        env:
+          HELM_SHA256: 86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb
+        run: |
+          set -euo pipefail
+          curl -fsSL -o helm.tgz https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz
+          echo "${HELM_SHA256}  helm.tgz" | sha256sum -c -
+          sudo tar -xzf helm.tgz -C /usr/local/bin --strip-components=1 linux-amd64/helm
+          rm -f helm.tgz
+
+      - name: Start Postgres and the pull secret
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+          kubectl create secret docker-registry ghcr-pull \
+            --docker-server=ghcr.io --docker-username="$ACTOR" --docker-password="$GHCR_TOKEN"
+          kubectl apply -f ci/postgres.yaml
+          kubectl rollout status deployment/postgres --timeout=180s
+
+      # --wait makes install wait for both Deployments to be Ready, which needs /readyz, which
+      # needs the migrate hook to have reached ExpectedSchemaVersion first.
+      - name: Install the chart
+        run: |
+          set -euo pipefail
+          helm install hp charts/horopter -f ci/install-values.yaml --wait --timeout 5m
+          kubectl get pods -o wide
+
+      - name: Show state on failure
+        if: failure()
+        run: |
+          kubectl get all,events
+          kubectl logs -l app.kubernetes.io/instance=hp --all-containers --tail=100 || true
