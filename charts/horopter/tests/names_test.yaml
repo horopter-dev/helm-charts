@@ -79,3 +79,24 @@ tests:
       - equal:
           path: spec.selector.matchLabels["app.kubernetes.io/name"]
           value: tl
+
+  - it: truncates a long fullnameOverride to 63
+    template: templates/servicemonitor.yaml
+    set:
+      fullnameOverride: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    asserts:
+      - equal:
+          path: metadata.name
+          value: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+  - it: does not repeat the chart name in a release named for it
+    template: templates/deployment.yaml
+    release:
+      name: horopter-prod
+    set:
+      fullnameOverride: ""
+    asserts:
+      - equal:
+          path: metadata.name
+          value: horopter-prod-ingress
+        documentIndex: 0

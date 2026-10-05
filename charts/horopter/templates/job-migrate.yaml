@@ -2,7 +2,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "horopter.fullname" . }}-migrate
+  name: {{ include "horopter.componentName" (dict "ctx" . "component" "migrate") }}
   labels:
     {{- include "horopter.labels" . | nindent 4 }}
     app.kubernetes.io/component: migrate

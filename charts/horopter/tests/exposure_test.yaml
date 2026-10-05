@@ -1,0 +1,70 @@
+---
+suite: exposure renders what was asked for
+templates:
+  - templates/ingress.yaml
+  - templates/httproute.yaml
+  - templates/servicemonitor.yaml
+release:
+  name: hp
+set:
+  database.existingSecret: db
+tests:
+  - it: renders the Ingress's class, TLS and prefix path
+    template: templates/ingress.yaml
+    set:
+      egress.kubernetesIngress.enabled: true
+      egress.kubernetesIngress.host: h.example.test
+      egress.kubernetesIngress.className: nginx
+      egress.kubernetesIngress.tls: [{hosts: [h.example.test], secretName: h-tls}]
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - equal:
+          path: spec.tls
+          value: [{hosts: [h.example.test], secretName: h-tls}]
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: Prefix
+
+  # An empty host is a catch-all rule: egress on every hostname the class serves.
+  - it: refuses an Ingress with no host
+    template: templates/ingress.yaml
+    set:
+      egress.kubernetesIngress.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "egress.kubernetesIngress.host is required"
+
+  - it: limits the route to its hostnames
+    template: templates/httproute.yaml
+    set:
+      egress.httpRoute.enabled: true
+      egress.httpRoute.parentRefs: [{name: gw}]
+      egress.httpRoute.hostnames: [h.example.test]
+    asserts:
+      - equal:
+          path: spec.hostnames
+          value: [h.example.test]
+
+  # A route with no parentRefs attaches to no Gateway: egress silently unreachable.
+  - it: refuses an HTTPRoute with no parentRefs
+    template: templates/httproute.yaml
+    set:
+      egress.httpRoute.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "egress.httpRoute.parentRefs is required"
+
+  - it: scrapes at the configured interval
+    template: templates/servicemonitor.yaml
+    set:
+      serviceMonitor.enabled: true
+      serviceMonitor.interval: 30s
+    asserts:
+      - equal:
+          path: spec.endpoints[0].interval
+          value: 30s

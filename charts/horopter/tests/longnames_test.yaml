@@ -1,0 +1,43 @@
+---
+suite: names stay within Kubernetes' 63 characters
+templates:
+  - templates/deployment.yaml
+  - templates/service.yaml
+  - templates/job-migrate.yaml
+  - templates/ingress.yaml
+release:
+  # Helm's longest release name.
+  name: rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+set:
+  database.existingSecret: db
+  egress.kubernetesIngress.enabled: true
+  egress.kubernetesIngress.host: h.example.test
+tests:
+  # Truncating the base name to 63 and then appending -ingress yields 71 characters, which the
+  # API refuses for a Service and a Job.
+  - it: keeps every name within 63 characters
+    asserts:
+      - matchRegex:
+          path: metadata.name
+          pattern: ^.{1,63}$
+
+  - it: keeps the two daemons' names distinct and named for their component
+    template: templates/service.yaml
+    asserts:
+      - matchRegex:
+          path: metadata.name
+          pattern: -ingress$
+        documentIndex: 0
+      - matchRegex:
+          path: metadata.name
+          pattern: -egress$
+        documentIndex: 1
+
+  # The base name is cut to 55 before "-egress", so the Service is <53 r's>-h-egress, and the
+  # Ingress must name exactly that.
+  - it: points the Ingress at the egress Service's own name
+    template: templates/ingress.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr-h-egress

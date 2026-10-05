@@ -64,3 +64,11 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "image.tag must be v0.2.0 or later"
+
+  # The no-v test above uses 0.2.1, which passes whether or not the prefix is optional.
+  - it: refuses a tag below the floor without the v prefix
+    set:
+      image.tag: 0.1.0
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag must be v0.2.0 or later"

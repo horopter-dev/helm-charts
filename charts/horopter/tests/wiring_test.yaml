@@ -1,0 +1,38 @@
+---
+suite: ports and telemetry are wired apart
+templates:
+  - templates/deployment.yaml
+release:
+  name: hp
+set:
+  database.existingSecret: db
+tests:
+  # The Service's targetPort: metrics must reach the exporter, not the API, or a ServiceMonitor
+  # scrapes a 404 and no series arrive.
+  - it: serves metrics on the metrics port, apart from http
+    documentIndex: 1
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_EXPORTER_PROMETHEUS_PORT
+            value: "9464"
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: metrics
+            containerPort: 9464
+            protocol: TCP
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: http
+            containerPort: 8081
+            protocol: TCP
+
+  - it: refuses a traces endpoint whose path is only a slash
+    set:
+      telemetry.tracesEndpoint: http://collector:4318/
+    asserts:
+      - failedTemplate:
+          errorPattern: "must include the signal path"

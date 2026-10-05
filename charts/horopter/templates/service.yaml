@@ -4,7 +4,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "horopter.fullname" $ }}-{{ $name }}
+  name: {{ include "horopter.componentName" (dict "ctx" $ "component" $name) }}
   labels:
     {{- include "horopter.labels" $ | nindent 4 }}
     app.kubernetes.io/component: {{ $name }}

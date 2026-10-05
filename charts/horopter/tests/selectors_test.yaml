@@ -1,0 +1,40 @@
+---
+suite: selectors match only their own pods
+templates:
+  - templates/deployment.yaml
+  - templates/service.yaml
+release:
+  name: hp
+set:
+  database.existingSecret: db
+tests:
+  # The API rejects a Deployment whose selector its pod template does not match — after the
+  # pre-upgrade hook has already migrated the schema.
+  - it: labels each pod with exactly what its selector matches
+    template: templates/deployment.yaml
+    documentIndex: 1
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: horopter
+            app.kubernetes.io/instance: hp
+            app.kubernetes.io/component: egress
+      - isSubset:
+          path: spec.template.metadata.labels
+          content:
+            app.kubernetes.io/name: horopter
+            app.kubernetes.io/instance: hp
+            app.kubernetes.io/component: egress
+
+  # Without the instance, two releases in one namespace send each other's traffic.
+  - it: selects only this release's daemon
+    template: templates/service.yaml
+    documentIndex: 1
+    asserts:
+      - equal:
+          path: spec.selector
+          value:
+            app.kubernetes.io/name: horopter
+            app.kubernetes.io/instance: hp
+            app.kubernetes.io/component: egress

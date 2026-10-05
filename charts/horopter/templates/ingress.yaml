@@ -3,7 +3,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "horopter.fullname" . }}-egress
+  name: {{ include "horopter.componentName" (dict "ctx" . "component" "egress") }}
   labels:
     {{- include "horopter.labels" . | nindent 4 }}
     app.kubernetes.io/component: egress
@@ -23,7 +23,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "horopter.fullname" . }}-egress
+                name: {{ include "horopter.componentName" (dict "ctx" . "component" "egress") }}
                 port:
                   number: {{ .Values.egress.port }}
 {{- end }}

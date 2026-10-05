@@ -20,6 +20,15 @@ by setting fullnameOverride.
 {{- end }}
 {{- end }}
 
+{{/*
+A component's resource name: takes dict "ctx" . "component" "<ingress|egress|migrate>". The base
+is cut to 55 before the suffix, so "-ingress" and "-migrate", the longest, still fit in 63, and
+the suffix, which keeps the components apart, is never what gets cut.
+*/}}
+{{- define "horopter.componentName" -}}
+{{- printf "%s-%s" (include "horopter.fullname" .ctx | trunc 55 | trimSuffix "-") .component }}
+{{- end }}
+
 {{- define "horopter.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
