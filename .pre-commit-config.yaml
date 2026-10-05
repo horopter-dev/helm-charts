@@ -22,6 +22,9 @@ repos:
     rev: v0.21.0
     hooks:
       - id: yamlfmt
+        # .yamlfmt's own exclude is not applied to the paths prek passes it explicitly, and a
+        # chart template is Go template text, not YAML.
+        exclude: ^charts/[^/]+/templates/
 
   - repo: local
     hooks:

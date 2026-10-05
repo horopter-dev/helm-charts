@@ -1,0 +1,15 @@
+---
+database:
+  existingSecret: horopter-db-app
+imagePullSecrets: [{name: ghcr-pull}]
+telemetry:
+  tracesEndpoint: http://otel-collector.otel.svc.cluster.local:4318/v1/traces
+serviceMonitor:
+  enabled: true
+egress:
+  httpRoute:
+    enabled: true
+    parentRefs:
+      - name: gateway
+        namespace: gateway
+    hostnames: [horopter.example.test]
