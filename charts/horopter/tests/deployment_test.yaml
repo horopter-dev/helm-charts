@@ -1,0 +1,177 @@
+---
+suite: the daemon deployments
+templates:
+  - templates/deployment.yaml
+release:
+  name: hp
+set:
+  database.existingSecret: horopter-db-app
+tests:
+  - it: renders one Deployment per daemon
+    asserts:
+      - hasDocuments:
+          count: 2
+      - containsDocument:
+          kind: Deployment
+          apiVersion: apps/v1
+          name: hp-horopter-ingress
+        documentIndex: 0
+      - containsDocument:
+          kind: Deployment
+          apiVersion: apps/v1
+          name: hp-horopter-egress
+        documentIndex: 1
+
+  - it: fails without a database secret
+    set:
+      database.existingSecret: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "database.existingSecret is required"
+
+  - it: reads DATABASE_URL from the named secret and key
+    documentIndex: 0
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: horopter-db-app
+                key: uri
+
+  - it: binds the metrics listener on every interface
+    documentIndex: 1
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_EXPORTER_PROMETHEUS_HOST
+            value: "0.0.0.0"
+
+  - it: never sets the general OTLP endpoint
+    set:
+      telemetry.tracesEndpoint: http://collector:4318/v1/traces
+    documentIndex: 0
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].env[?(@.name == "OTEL_EXPORTER_OTLP_ENDPOINT")]
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+            value: http://collector:4318/v1/traces
+
+  - it: refuses a traces endpoint with no signal path
+    set:
+      telemetry.tracesEndpoint: http://collector:4318
+    asserts:
+      - failedTemplate:
+          errorPattern: "telemetry.tracesEndpoint must include the signal path"
+
+  - it: sets no traces endpoint when tracing is off
+    documentIndex: 0
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].env[?(@.name == "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")]
+
+  - it: names each daemon's service for telemetry
+    documentIndex: 1
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: OTEL_SERVICE_NAME
+            value: horopter-egress
+
+  - it: uses each daemon's own image at the shared tag
+    set:
+      image.tag: v0.3.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/horopter-dev/horopter-ingress:v0.3.0
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/horopter-dev/horopter-egress:v0.3.0
+        documentIndex: 1
+
+  - it: puts pull secrets on the pod spec and mounts no token
+    set:
+      imagePullSecrets: [{name: ghcr-pull}]
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets
+          value:
+            - name: ghcr-pull
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+      - notExists:
+          path: spec.template.spec.serviceAccountName
+
+  - it: probes readyz and healthz on the http port
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet
+          value: {path: /readyz, port: http}
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet
+          value: {path: /healthz, port: http}
+
+  - it: listens on each daemon's port
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: HOROPTER_ADDR, value: "0.0.0.0:8080"}
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content: {name: HOROPTER_ADDR, value: "0.0.0.0:8081"}
+        documentIndex: 1
+
+  - it: honours per-daemon replicas and resources
+    set:
+      egress.replicaCount: 3
+      egress.resources:
+        requests: {cpu: 50m, memory: 64Mi}
+    documentIndex: 1
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 64Mi
+
+  - it: pins a digest by @
+    set:
+      image.tag: sha256:0123abcd
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/horopter-dev/horopter-ingress@sha256:0123abcd
+
+  - it: keeps the version label valid for a full-length digest
+    set:
+      image.tag: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    documentIndex: 0
+    asserts:
+      - matchRegex:
+          path: metadata.labels["app.kubernetes.io/version"]
+          pattern: ^[A-Za-z0-9]([A-Za-z0-9_.-]{0,61}[A-Za-z0-9])?$
+
+  - it: runs as the image's nonroot user with a read-only root
+    documentIndex: 0
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 65532
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true

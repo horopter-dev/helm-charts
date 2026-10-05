@@ -1,1 +1,80 @@
 {{- include "horopter.checkFloor" . }}
+{{- include "horopter.checkTracesEndpoint" . }}
+{{- $secret := required "horopter: database.existingSecret is required — name an existing Secret holding the Postgres URI" .Values.database.existingSecret }}
+{{- range $name := list "ingress" "egress" }}
+{{- $d := index $.Values $name }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "horopter.fullname" $ }}-{{ $name }}
+  labels:
+    {{- include "horopter.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  replicas: {{ $d.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "horopter.selectorLabels" (dict "ctx" $ "component" $name) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "horopter.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $name }}
+    spec:
+      automountServiceAccountToken: false
+      {{- include "horopter.imagePullSecrets" $ | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: {{ $name }}
+          image: {{ include "horopter.image" (dict "ctx" $ "name" $name) }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $d.port }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ $.Values.metrics.port }}
+              protocol: TCP
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: {{ $.Values.database.key }}
+            - name: HOROPTER_ADDR
+              value: "0.0.0.0:{{ $d.port }}"
+            - name: OTEL_SERVICE_NAME
+              value: horopter-{{ $name }}
+            # Not a value: the binary defaults to localhost, which in a pod serves no scraper.
+            - name: OTEL_EXPORTER_PROMETHEUS_HOST
+              value: "0.0.0.0"
+            - name: OTEL_EXPORTER_PROMETHEUS_PORT
+              value: {{ $.Values.metrics.port | quote }}
+            {{- with $.Values.telemetry.tracesEndpoint }}
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: {{ . | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          {{- with $d.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}
