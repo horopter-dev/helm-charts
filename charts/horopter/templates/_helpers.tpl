@@ -98,3 +98,9 @@ imagePullSecrets:
 {{- toYaml . | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{- define "horopter.checkExposure" -}}
+{{- if and .Values.egress.httpRoute.enabled .Values.egress.kubernetesIngress.enabled }}
+{{- fail "horopter: enable at most one of egress.httpRoute and egress.kubernetesIngress" }}
+{{- end }}
+{{- end }}

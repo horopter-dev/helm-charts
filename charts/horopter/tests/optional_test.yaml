@@ -1,0 +1,80 @@
+---
+suite: optional resources
+templates:
+  - templates/servicemonitor.yaml
+  - templates/httproute.yaml
+  - templates/ingress.yaml
+release:
+  name: hp
+set:
+  database.existingSecret: db
+tests:
+  - it: renders none of them by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders one ServiceMonitor selecting both daemons' metrics ports
+    template: templates/servicemonitor.yaml
+    set:
+      serviceMonitor.enabled: true
+      serviceMonitor.labels:
+        release: kube-prometheus-stack
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.labels.release
+          value: kube-prometheus-stack
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: horopter
+            app.kubernetes.io/instance: hp
+      - equal:
+          path: spec.endpoints[0].port
+          value: metrics
+
+  - it: routes only to egress
+    template: templates/httproute.yaml
+    set:
+      egress.httpRoute.enabled: true
+      egress.httpRoute.parentRefs:
+        - {name: gateway, namespace: gateway}
+      egress.httpRoute.hostnames: [horopter.lab.yo61.net]
+    asserts:
+      - equal:
+          path: spec.rules[0].backendRefs[0]
+          value: {name: hp-horopter-egress, port: 8081}
+
+  # host is set so the exclusivity check is the only failure either template can raise.
+  # Helm stops at the first template that fails and reports that one: ingress.yaml, which renders
+  # before httproute.yaml. Both include horopter.checkExposure, so the render fails either way.
+  - it: refuses an HTTPRoute and an Ingress together
+    template: templates/ingress.yaml
+    set:
+      egress.httpRoute.enabled: true
+      egress.kubernetesIngress.enabled: true
+      egress.kubernetesIngress.host: horopter.example.test
+    asserts:
+      - failedTemplate:
+          errorPattern: "at most one of egress.httpRoute and egress.kubernetesIngress"
+
+  - it: reports the conflict, not the host, when both are on and no host is set
+    template: templates/ingress.yaml
+    set:
+      egress.httpRoute.enabled: true
+      egress.kubernetesIngress.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "at most one of egress.httpRoute and egress.kubernetesIngress"
+
+  - it: renders an Ingress to egress when asked
+    template: templates/ingress.yaml
+    set:
+      egress.kubernetesIngress.enabled: true
+      egress.kubernetesIngress.host: horopter.example.test
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service
+          value: {name: hp-horopter-egress, port: {number: 8081}}
