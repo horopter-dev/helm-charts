@@ -1,0 +1,7 @@
+# Pinned here for local runs; CI installs the same versions with checksums pinned in the
+# workflow. Bump both together.
+[tools]
+helm = "4.3.0"
+kubeconform = "0.8.0"
+kind = "0.33.0"
+task = "latest"

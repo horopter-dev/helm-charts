@@ -1,0 +1,33 @@
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-yaml
+        # ci/postgres.yaml holds three documents.
+        args: [--allow-multiple-documents]
+        exclude: ^charts/[^/]+/templates/
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        args: [--format, parsable, --strict]
+
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.21.0
+    hooks:
+      - id: yamlfmt
+
+  - repo: local
+    hooks:
+      - id: helm-check
+        name: helm lint, unit tests and kubeconform
+        entry: task check
+        language: system
+        pass_filenames: false
+        files: ^charts/

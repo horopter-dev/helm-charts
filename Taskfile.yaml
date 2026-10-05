@@ -1,0 +1,86 @@
+---
+# https://taskfile.dev
+version: '3'
+silent: true
+
+set: [errexit, nounset, pipefail]
+
+vars:
+  CHART: charts/horopter
+  CATALOG: https://raw.githubusercontent.com/datreeio/CRDs-catalog
+  CATALOG_REF: 4c8dc296d32b06d15ccde9668ff136c951f4d539
+  SCHEMA_PATH: '{{`{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}`}}.json'
+  SCHEMAS: '{{.CATALOG}}/{{.CATALOG_REF}}/{{.SCHEMA_PATH}}'
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list-all
+
+  setup:
+    desc: Install the helm-unittest plugin at the pinned version
+    summary: >-
+      Downloads the release archive for this platform, checks it against the sha256 pinned here rather
+      than one fetched beside it, and extracts it into Helm's plugin directory, where Helm finds it by
+      its plugin.yaml. Not `helm plugin install`: Helm 4 expects the archive to hold a directory named
+      after it, which this one does not, and installing from a directory runs the plugin's install hook,
+      which fetches the binary again, unpinned. The checksum is the check, so a platform with no pinned
+      checksum is refused rather than installed blind.
+    status:
+      - helm plugin list | grep -q '^unittest'
+    cmds:
+      - |
+        case "$(uname -s)-$(uname -m)" in
+          Linux-x86_64) platform=linux-amd64
+            sum=48e86ecc1467b009630e5954375e5d8494139f73b466df5fe8c04fa45b634939 ;;
+          Linux-aarch64) platform=linux-arm64
+            sum=c66062713cd3cbb1a80d7098bd1d4a48db8438f56b43fb6377df65447f93f8de ;;
+          Darwin-arm64) platform=macos-arm64
+            sum=38ec0475b9206ba62454ab0f51a7fecbb9bfe103e9a7a1426f3b799d4f432ab2 ;;
+          Darwin-x86_64) platform=macos-amd64
+            sum=3e57daace5249d8dafd5fd2f6fbebf773c7e53a56e904db1f903031866853158 ;;
+          *)
+            echo "no pinned helm-unittest checksum for $(uname -s)-$(uname -m)" >&2
+            exit 1 ;;
+        esac
+        tmp="$(mktemp -d)"
+        trap 'rm -rf "$tmp"' EXIT
+        archive="helm-unittest-${platform}-1.2.1.tgz"
+        curl -fsSL -o "$tmp/$archive" \
+          "https://github.com/helm-unittest/helm-unittest/releases/download/v1.2.1/$archive"
+        (cd "$tmp" && echo "$sum  $archive" | shasum -a 256 -c -)
+        dest="$(helm env HELM_PLUGINS)/unittest"
+        mkdir -p "$dest"
+        tar -xzf "$tmp/$archive" -C "$dest"
+
+  lint:
+    desc: helm lint --strict
+    cmds:
+      - helm lint --strict {{.CHART}} --set database.existingSecret=lint
+
+  test:
+    desc: Run the helm-unittest suites
+    deps: [setup]
+    cmds:
+      - helm unittest --strict {{.CHART}}
+
+  validate:
+    desc: Render with every optional resource on and schema-check it
+    summary: >-
+      Renders the chart with ci/all-on-values.yaml, which enables every optional template, so kubeconform
+      sees every kind the chart can emit. CRD schemas come from a pinned commit of datreeio/CRDs-catalog.
+    cmds:
+      - |
+        helm template hp {{.CHART}} -f ci/all-on-values.yaml \
+          | kubeconform -strict -summary \
+              -kubernetes-version 1.37.0 \
+              -schema-location default \
+              -schema-location '{{.SCHEMAS}}'
+
+  check:
+    desc: lint, test and validate
+    cmds:
+      - task: lint
+      - task: test
+      - task: validate
