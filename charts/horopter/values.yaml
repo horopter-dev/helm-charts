@@ -31,12 +31,15 @@ metrics:
 ingress:
   replicaCount: 1
   port: 8080
-  resources: {}
+  # Requests only, so the scheduler accounts for each daemon; no limits by default.
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
 
 egress:
   replicaCount: 1
   port: 8081
-  resources: {}
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
   # Exposure: at most one of httpRoute and kubernetesIngress.
   httpRoute:
     enabled: false
