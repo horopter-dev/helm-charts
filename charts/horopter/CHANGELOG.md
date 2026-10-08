@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/horopter-dev/helm-charts/compare/horopter-0.3.0...horopter-0.3.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **horopter:** request cpu and memory for both daemons by default ([#8](https://github.com/horopter-dev/helm-charts/issues/8)) ([8ca6a4d](https://github.com/horopter-dev/helm-charts/commit/8ca6a4d7f56d8ebb4657f9a64ad1bb78fbc30629))
+
 ## [0.3.0](https://github.com/horopter-dev/helm-charts/compare/horopter-0.2.0...horopter-0.3.0) (2026-10-06)
 
 
