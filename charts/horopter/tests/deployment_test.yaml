@@ -134,6 +134,19 @@ tests:
           content: {name: HOROPTER_ADDR, value: "0.0.0.0:8081"}
         documentIndex: 1
 
+  - it: requests cpu and memory for both daemons by default, with no limits
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources
+          value:
+            requests: {cpu: 10m, memory: 32Mi}
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].resources
+          value:
+            requests: {cpu: 10m, memory: 32Mi}
+        documentIndex: 1
+
   - it: honours per-daemon replicas and resources
     set:
       egress.replicaCount: 3

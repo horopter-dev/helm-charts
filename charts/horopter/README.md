@@ -46,7 +46,7 @@ as development only.
 | `telemetry.tracesEndpoint` | `""` | full OTLP/HTTP traces URL, e.g. `http://collector:4318/v1/traces`; empty disables tracing |
 | `metrics.port` | `9464` | Prometheus scrape port, named `metrics` |
 | `ingress.replicaCount`, `egress.replicaCount` | `1` | replicas per daemon |
-| `ingress.resources`, `egress.resources` | `{}` | resources per daemon |
+| `ingress.resources`, `egress.resources` | requests 10m CPU, 32Mi | per daemon; no limits |
 | `egress.httpRoute.*` | off | a Gateway API `HTTPRoute` to egress |
 | `egress.kubernetesIngress.*` | off | an `Ingress` to egress; not with `httpRoute` |
 | `serviceMonitor.enabled` | `false` | a `ServiceMonitor` over both daemons |
