@@ -1,0 +1,83 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+
+  // Two bots update this repository, each owning different pins. Dependabot keeps the
+  // workflows' action SHAs and the pre-commit hooks (.github/dependabot.yaml). Renovate owns
+  // the chart's appVersion, kind and its node image, prek, and kind in mise.toml.
+  // enabledManagers is what keeps them apart: a manager not listed here does not run, so
+  // Renovate never edits a file Dependabot owns. Renovate runs from
+  // horopter-dev/infrastructure's workflow, whose cron is the only schedule; do not add a
+  // `schedule` here.
+  //
+  // helm and kubeconform are pinned in ci.yaml with a SHA-256 each, which Renovate cannot
+  // update, so they move by hand, ci.yaml and mise.toml together.
+  extends: ["config:recommended", "customManagers:githubActionsVersions"],
+  enabledManagers: ["mise", "custom.regex"],
+
+  // Policy shared by every horopter-dev repository Renovate updates; keep the copies alike.
+  semanticCommits: "enabled",
+  dependencyDashboard: true,
+  // The same cooldown as Dependabot's. Vulnerability fixes skip it.
+  minimumReleaseAge: "7 days",
+  // A release with no timestamp, such as an image on a registry other than Docker Hub, is
+  // proposed without the cooldown instead of never.
+  minimumReleaseAgeBehaviour: "timestamp-optional",
+  // The default hourly limit throttles a bot that runs continuously; a cron run is one hour.
+  prHourlyLimit: 0,
+  prConcurrentLimit: 10,
+  osvVulnerabilityAlerts: true,
+  vulnerabilityAlerts: {
+    semanticCommitType: "fix",
+    labels: ["security"],
+  },
+
+  packageRules: [
+    {
+      // Majors wait longer: they are the ones that get emergency-patched.
+      matchUpdateTypes: ["major"],
+      minimumReleaseAge: "14 days",
+    },
+    {
+      // helm and kubeconform move by hand with their checksums; task floats at latest.
+      matchManagers: ["mise"],
+      matchDepNames: ["helm", "kubeconform", "task"],
+      enabled: false,
+    },
+    {
+      // kind, its node image and the local kind move together: a node image is built for a
+      // kind release.
+      matchDepNames: ["kubernetes-sigs/kind", "kind", "kindest/node"],
+      groupName: "kind",
+    },
+    {
+      // A new Horopter release becomes the chart's default as soon as it is out. feat, so
+      // Release Please moves the chart's minor version and releases it.
+      matchDepNames: ["horopter-dev/horopter"],
+      minimumReleaseAge: null,
+      semanticCommitType: "feat",
+      semanticCommitScope: "horopter",
+      commitMessageTopic: "default to horopter",
+      commitMessageExtra: "{{newValue}}",
+      commitMessageAction: "",
+    },
+  ],
+
+  customManagers: [
+    {
+      customType: "regex",
+      managerFilePatterns: ["/^charts/horopter/Chart\\.yaml$/"],
+      matchStrings: ['(?m)^appVersion: "(?<currentValue>v[^"]+)"$'],
+      datasourceTemplate: "github-releases",
+      depNameTemplate: "horopter-dev/horopter",
+    },
+    {
+      // kind's node image, pinned by digest.
+      customType: "regex",
+      managerFilePatterns: ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      matchStrings: [
+        "node_image: (?<depName>kindest/node):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)",
+      ],
+      datasourceTemplate: "docker",
+    },
+  ],
+}
