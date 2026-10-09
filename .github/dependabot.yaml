@@ -10,6 +10,7 @@ updates:
     groups:
       hooks:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   # The workflows pin actions to SHAs, which nothing else refreshes.
   - package-ecosystem: "github-actions"
@@ -21,3 +22,4 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
