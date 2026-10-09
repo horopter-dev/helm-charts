@@ -1,9 +1,9 @@
 ---
 name: Release Please
 
-# Keeps one release PR open on main, bumping charts/horopter/Chart.yaml's version and its
-# CHANGELOG.md from the conventional commits that touched the chart. Merging it creates the
-# GitHub release horopter-<version>, and release.yaml publishes the chart on that event.
+# Keeps one release PR open per chart on main, bumping charts/<chart>/Chart.yaml's version and
+# its CHANGELOG.md from the conventional commits that touched the chart. Merging it creates the
+# GitHub release <chart>-<version>, and release.yaml publishes the chart on that event.
 #
 # horopter's own release workflow creates a draft and pushes the tag in a later step, because
 # GoReleaser attaches assets before publishing. A chart has no release assets: it goes to an

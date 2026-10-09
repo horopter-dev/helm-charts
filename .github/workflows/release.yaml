@@ -1,8 +1,8 @@
 ---
 name: Release
 
-# Publishes the chart to oci://ghcr.io/horopter-dev/charts/horopter when Release Please
-# publishes a horopter-<version> release (see release-please.yaml).
+# Publishes a chart to oci://ghcr.io/horopter-dev/charts/<chart> when Release Please publishes
+# a <chart>-<version> release (see release-please.yaml), for each chart under charts/.
 
 on:
   release:
@@ -18,7 +18,6 @@ jobs:
   publish:
     runs-on: ubuntu-26.04
     timeout-minutes: 10
-    if: startsWith(github.ref_name, 'horopter-')
     permissions:
       contents: read
       packages: write
@@ -37,23 +36,34 @@ jobs:
           sudo tar -xzf helm.tgz -C /usr/local/bin --strip-components=1 linux-amd64/helm
           rm -f helm.tgz
 
-      - name: Refuse a tag that does not match Chart.yaml
+      # A chart's name can hold a hyphen (horopter-flux), so the chart is the tag less its
+      # trailing -<semver>, not the tag up to its first hyphen.
+      - name: Refuse a tag that does not name a chart at its Chart.yaml version
+        id: chart
         env:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          want="horopter-$(helm show chart charts/horopter | sed -n 's/^version: //p')"
-          if [ "$TAG" != "$want" ]; then
-            echo "::error::tag $TAG does not match Chart.yaml ($want)"
+          chart="$(sed -E 's/-[0-9]+\.[0-9]+\.[0-9]+([-+].*)?$//' <<< "$TAG")"
+          if [ "$chart" = "$TAG" ] || [ ! -f "charts/$chart/Chart.yaml" ]; then
+            echo "::error::tag $TAG names no chart under charts/"
             exit 1
           fi
+          want="$chart-$(helm show chart "charts/$chart" | sed -n 's/^version: //p')"
+          if [ "$TAG" != "$want" ]; then
+            echo "::error::tag $TAG does not match charts/$chart/Chart.yaml ($want)"
+            exit 1
+          fi
+          echo "name=$chart" >> "$GITHUB_OUTPUT"
 
       - name: Package and push
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ACTOR: ${{ github.actor }}
+          CHART: ${{ steps.chart.outputs.name }}
+          TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          helm package charts/horopter
+          helm package "charts/$CHART"
           echo "$GHCR_TOKEN" | helm registry login ghcr.io -u "$ACTOR" --password-stdin
-          helm push horopter-*.tgz oci://ghcr.io/horopter-dev/charts
+          helm push "$TAG.tgz" oci://ghcr.io/horopter-dev/charts

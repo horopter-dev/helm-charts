@@ -1,0 +1,139 @@
+---
+suite: the client deployment
+templates:
+  - templates/deployment.yaml
+release:
+  name: hp
+chart:
+  appVersion: v0.8.0
+set:
+  ingress.url: http://hp-horopter-ingress.horopter.svc:8080
+  ingress.existingSecret: horopter-flux
+tests:
+  # Duplicates are harmless (idempotency keys), but a second replica only doubles the posts.
+  - it: renders one Deployment with one replica
+    asserts:
+      - hasDocuments:
+          count: 1
+      - containsDocument:
+          kind: Deployment
+          apiVersion: apps/v1
+          name: hp-horopter-flux
+      - equal:
+          path: spec.replicas
+          value: 1
+
+  - it: fails without an ingress URL
+    set:
+      ingress.url: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "ingress.url is required"
+
+  - it: fails without a key secret
+    set:
+      ingress.existingSecret: ""
+    asserts:
+      - failedTemplate:
+          errorPattern: "ingress.existingSecret is required"
+
+  - it: passes the ingress URL as given
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HOROPTER_INGRESS_URL
+            value: http://hp-horopter-ingress.horopter.svc:8080
+
+  - it: reads the producer key from the named secret's key
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HOROPTER_INGRESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: horopter-flux
+                key: key
+
+  - it: reads the producer key from another key when told
+    set:
+      ingress.key: producer-key
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HOROPTER_INGRESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: horopter-flux
+                key: producer-key
+
+  - it: runs the chart's appVersion by default
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/horopter-dev/horopter-flux:v0.8.0
+
+  - it: runs another tag when told
+    set:
+      image.tag: v0.9.1
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/horopter-dev/horopter-flux:v0.9.1
+
+  - it: pins a digest with @, and keeps the version label valid
+    set:
+      image.tag: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: ^ghcr\.io/horopter-dev/horopter-flux@sha256:[0-9a-f]{64}$
+      - matchRegex:
+          path: metadata.labels["app.kubernetes.io/version"]
+          pattern: ^[A-Za-z0-9]([A-Za-z0-9_.-]{0,61}[A-Za-z0-9])?$
+
+  - it: names existing pull secrets
+    set:
+      imagePullSecrets: [{name: ghcr-pull}]
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets
+          value: [{name: ghcr-pull}]
+
+  - it: sets no pull secrets by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.imagePullSecrets
+
+  # Unlike the horopter daemons, this pod talks to the Kubernetes API, so it needs the token.
+  - it: runs as the chart's service account, with its token mounted
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: hp-horopter-flux
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: true
+
+  - it: requests resources and sets no limits
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources
+          value:
+            requests: {cpu: 10m, memory: 64Mi}
+
+  - it: selects its own pods by their labels
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: horopter-flux
+            app.kubernetes.io/instance: hp
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: horopter-flux
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: hp

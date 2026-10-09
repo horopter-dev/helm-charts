@@ -1,0 +1,39 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "horopter-flux.fullname" . }}
+  labels:
+    {{- include "horopter-flux.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [source.toolkit.fluxcd.io]
+    resources: [gitrepositories]
+    verbs: [get, list, watch]
+  - apiGroups: [kustomize.toolkit.fluxcd.io]
+    resources: [kustomizations]
+    verbs: [get, list, watch]
+  - apiGroups: [helm.toolkit.fluxcd.io]
+    resources: [helmreleases]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [get, list, watch]
+  # Its uid prefixes every idempotency key, so two clusters on one tenant never collide.
+  - apiGroups: [""]
+    resources: [namespaces]
+    resourceNames: [kube-system]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "horopter-flux.fullname" . }}
+  labels:
+    {{- include "horopter-flux.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "horopter-flux.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "horopter-flux.fullname" . }}
+    namespace: {{ .Release.Namespace }}

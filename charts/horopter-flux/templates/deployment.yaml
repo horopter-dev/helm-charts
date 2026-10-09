@@ -1,0 +1,51 @@
+{{- $url := required "horopter-flux: ingress.url is required — Horopter ingress's base URL" .Values.ingress.url }}
+{{- $secret := required "horopter-flux: ingress.existingSecret is required — name an existing Secret holding a producer key" .Values.ingress.existingSecret }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "horopter-flux.fullname" . }}
+  labels:
+    {{- include "horopter-flux.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "horopter-flux.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "horopter-flux.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "horopter-flux.fullname" . }}
+      automountServiceAccountToken: true
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: horopter-flux
+          image: {{ include "horopter-flux.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: HOROPTER_INGRESS_URL
+              value: {{ $url | quote }}
+            - name: HOROPTER_INGRESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: {{ .Values.ingress.key }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}

@@ -1,0 +1,25 @@
+---
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  registry: ghcr.io/horopter-dev
+  # Defaults to the chart's appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# Existing kubernetes.io/dockerconfigjson Secrets, in the pod spec's own shape:
+# [{name: ghcr-pull}]. The chart creates none.
+imagePullSecrets: []
+
+ingress:
+  # Required: Horopter ingress's base URL, such as
+  # http://horopter-ingress.horopter.svc.cluster.local:8080.
+  url: ""
+  # Required: an existing Secret holding a producer key issued with horoctl admin keys issue.
+  existingSecret: ""
+  key: key
+
+# Requests only, so the scheduler accounts for the pod; no limits by default.
+resources:
+  requests: {cpu: 10m, memory: 64Mi}
