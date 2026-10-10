@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/horopter-dev/helm-charts/compare/horopter-0.4.0...horopter-0.5.0) (2026-10-10)
+
+
+### Features
+
+* **horopter:** default to horopter [v0.8.0](https://github.com/horopter-dev/horopter/releases/tag/v0.8.0). That release adds `horopter-flux`, which this chart does not run: install it with the new `horopter-flux` chart. For the ingress and egress daemons it brings only minor and patch dependency updates, and no migration ([#19](https://github.com/horopter-dev/helm-charts/issues/19)) ([3d9e432](https://github.com/horopter-dev/helm-charts/commit/3d9e4323289ba52b28e0e2793a7be0fc9cce6d63))
+
 ## [0.4.0](https://github.com/horopter-dev/helm-charts/compare/horopter-0.3.2...horopter-0.4.0) (2026-10-09)
 
 
