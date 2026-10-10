@@ -1,0 +1,5 @@
+---
+imagePullSecrets: [{name: ghcr-pull}]
+ingress:
+  url: http://hp-horopter-ingress.default.svc.cluster.local:8080
+  existingSecret: horopter-flux

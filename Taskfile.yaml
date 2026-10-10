@@ -6,7 +6,6 @@ silent: true
 set: [errexit, nounset, pipefail]
 
 vars:
-  CHART: charts/horopter
   CATALOG: https://raw.githubusercontent.com/datreeio/CRDs-catalog
   CATALOG_REF: 4c8dc296d32b06d15ccde9668ff136c951f4d539
   SCHEMA_PATH: '{{`{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}`}}.json'
@@ -57,23 +56,28 @@ tasks:
   lint:
     desc: helm lint --strict
     cmds:
-      - helm lint --strict {{.CHART}} --set database.existingSecret=lint
+      - helm lint --strict charts/horopter --set database.existingSecret=lint
+      - helm lint --strict charts/horopter-flux -f ci/horopter-flux-values.yaml
 
   test:
     desc: Run the helm-unittest suites
     deps: [setup]
     cmds:
-      - helm unittest --strict {{.CHART}}
+      - helm unittest --strict charts/horopter charts/horopter-flux
 
   validate:
-    desc: Render with every optional resource on and schema-check it
+    desc: Render each chart with every optional resource on and schema-check it
     summary: >-
-      Renders the chart with ci/all-on-values.yaml, which enables every optional template, so kubeconform
-      sees every kind the chart can emit. CRD schemas come from a pinned commit of datreeio/CRDs-catalog.
+      Renders horopter with ci/all-on-values.yaml, which enables every optional template, so kubeconform
+      sees every kind the chart can emit, and horopter-flux, which has no optional templates, with its
+      required values. CRD schemas come from a pinned commit of datreeio/CRDs-catalog.
     cmds:
       - |
-        helm template hp {{.CHART}} -f ci/all-on-values.yaml \
-          | kubeconform -strict -summary \
+        {
+          helm template hp charts/horopter -f ci/all-on-values.yaml
+          echo ---
+          helm template hp charts/horopter-flux -f ci/horopter-flux-values.yaml
+        } | kubeconform -strict -summary \
               -kubernetes-version 1.37.0 \
               -schema-location default \
               -schema-location '{{.SCHEMAS}}'

@@ -1,0 +1,69 @@
+---
+suite: read-only access to Flux's objects
+templates:
+  - templates/rbac.yaml
+  - templates/serviceaccount.yaml
+release:
+  name: hp
+  namespace: flux-system
+set:
+  ingress.url: http://ingress:8080
+  ingress.existingSecret: horopter-flux
+tests:
+  # Pinned whole: a Secret, a write verb or a wildcard added anywhere fails this test.
+  - it: grants only get, list and watch on the watched kinds, and get on kube-system
+    template: templates/rbac.yaml
+    documentIndex: 0
+    asserts:
+      - containsDocument:
+          kind: ClusterRole
+          apiVersion: rbac.authorization.k8s.io/v1
+          name: hp-horopter-flux
+      - equal:
+          path: rules
+          value:
+            - apiGroups: [source.toolkit.fluxcd.io]
+              resources: [gitrepositories]
+              verbs: [get, list, watch]
+            - apiGroups: [kustomize.toolkit.fluxcd.io]
+              resources: [kustomizations]
+              verbs: [get, list, watch]
+            - apiGroups: [helm.toolkit.fluxcd.io]
+              resources: [helmreleases]
+              verbs: [get, list, watch]
+            - apiGroups: [""]
+              resources: [events]
+              verbs: [get, list, watch]
+            - apiGroups: [""]
+              resources: [namespaces]
+              resourceNames: [kube-system]
+              verbs: [get]
+
+  - it: binds the role to the chart's service account in the release namespace
+    template: templates/rbac.yaml
+    documentIndex: 1
+    asserts:
+      - containsDocument:
+          kind: ClusterRoleBinding
+          apiVersion: rbac.authorization.k8s.io/v1
+          name: hp-horopter-flux
+      - equal:
+          path: roleRef
+          value:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: hp-horopter-flux
+      - equal:
+          path: subjects
+          value:
+            - kind: ServiceAccount
+              name: hp-horopter-flux
+              namespace: flux-system
+
+  - it: creates the service account the binding names
+    template: templates/serviceaccount.yaml
+    asserts:
+      - containsDocument:
+          kind: ServiceAccount
+          apiVersion: v1
+          name: hp-horopter-flux

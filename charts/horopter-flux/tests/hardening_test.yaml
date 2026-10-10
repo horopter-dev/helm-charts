@@ -1,0 +1,34 @@
+---
+suite: the pod is hardened
+templates:
+  - templates/deployment.yaml
+release:
+  name: hp
+set:
+  ingress.url: http://ingress:8080
+  ingress.existingSecret: horopter-flux
+tests:
+  # Pod Security "restricted" rejects a pod missing any of these.
+  - it: hardens the pod and its container
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+
+  - it: pulls only when the image is absent
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: IfNotPresent
