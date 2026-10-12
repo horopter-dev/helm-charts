@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.0](https://github.com/horopter-dev/helm-charts/compare/horopter-0.7.0...horopter-0.8.0) (2026-10-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **horopter:** values the chart does not define, which it previously ignored, now fail the install.
+
+### Features
+
+* **horopter:** expose the ingress daemon through an HTTPRoute or Ingress ([#31](https://github.com/horopter-dev/helm-charts/issues/31)) ([3a6417f](https://github.com/horopter-dev/helm-charts/commit/3a6417f4e123a2f8dc5b01bb21a20897a476e8e9))
+* **horopter:** print each daemon's URL and exposure after install ([#33](https://github.com/horopter-dev/helm-charts/issues/33)) ([c10262d](https://github.com/horopter-dev/helm-charts/commit/c10262d0754f26b6013b445cc3ce8a08d8cc02d5))
+* **horopter:** refuse unknown and mistyped values ([#34](https://github.com/horopter-dev/helm-charts/issues/34)) ([54b48da](https://github.com/horopter-dev/helm-charts/commit/54b48da5f00ddc7d0cd68136ad6bffc1d11f05c5))
+
 ## [0.7.0](https://github.com/horopter-dev/helm-charts/compare/horopter-0.6.0...horopter-0.7.0) (2026-10-12)
 
 

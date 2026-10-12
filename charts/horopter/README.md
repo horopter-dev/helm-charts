@@ -8,7 +8,7 @@ its schema before each install and upgrade.
 <!-- x-release-please-start-version -->
 
     helm install horopter oci://ghcr.io/horopter-dev/charts/horopter \
-      --version 0.7.0 \
+      --version 0.8.0 \
       --set database.existingSecret=<secret holding the Postgres URI>
 
 <!-- x-release-please-end -->
@@ -47,9 +47,6 @@ per daemon. Ingress is the write endpoint, so expose it only for producers outsi
 cluster, such as CI runners.
 
 ## Values
-
-`values.schema.json` checks every value, so a misspelt key or a wrong type fails at install
-rather than being ignored.
 
 | value | default | meaning |
 | --- | --- | --- |
