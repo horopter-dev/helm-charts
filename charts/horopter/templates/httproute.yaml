@@ -1,24 +1,30 @@
 {{- include "horopter.checkExposure" . }}
-{{- if .Values.egress.httpRoute.enabled }}
+{{- range $name := list "ingress" "egress" }}
+{{- $d := index $.Values $name }}
+{{- if $d.httpRoute.enabled }}
+{{- $service := include "horopter.componentName" (dict "ctx" $ "component" $name) }}
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: {{ include "horopter.componentName" (dict "ctx" . "component" "egress") }}
+  name: {{ $service }}
   labels:
-    {{- include "horopter.labels" . | nindent 4 }}
-    app.kubernetes.io/component: egress
+    {{- include "horopter.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
 spec:
-  {{- if not .Values.egress.httpRoute.parentRefs }}
-  {{- fail "horopter: egress.httpRoute.parentRefs is required — name the Gateway the route attaches to" }}
+  {{- if not $d.httpRoute.parentRefs }}
+  {{- fail (printf "horopter: %s.httpRoute.parentRefs is required — %s" $name
+        "name the Gateway the route attaches to") }}
   {{- end }}
   parentRefs:
-    {{- toYaml .Values.egress.httpRoute.parentRefs | nindent 4 }}
-  {{- with .Values.egress.httpRoute.hostnames }}
+    {{- toYaml $d.httpRoute.parentRefs | nindent 4 }}
+  {{- with $d.httpRoute.hostnames }}
   hostnames:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   rules:
     - backendRefs:
-        - name: {{ include "horopter.componentName" (dict "ctx" . "component" "egress") }}
-          port: {{ .Values.egress.port }}
+        - name: {{ $service }}
+          port: {{ $d.port }}
+{{- end }}
 {{- end }}

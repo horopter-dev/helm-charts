@@ -1,29 +1,36 @@
 {{- include "horopter.checkExposure" . }}
-{{- if .Values.egress.kubernetesIngress.enabled }}
+{{- range $name := list "ingress" "egress" }}
+{{- $d := index $.Values $name }}
+{{- if $d.kubernetesIngress.enabled }}
+{{- $service := include "horopter.componentName" (dict "ctx" $ "component" $name) }}
+{{- $missingHost := printf "horopter: %s.kubernetesIngress.host is required" $name }}
+{{- $host := required $missingHost $d.kubernetesIngress.host }}
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "horopter.componentName" (dict "ctx" . "component" "egress") }}
+  name: {{ $service }}
   labels:
-    {{- include "horopter.labels" . | nindent 4 }}
-    app.kubernetes.io/component: egress
+    {{- include "horopter.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
 spec:
-  {{- with .Values.egress.kubernetesIngress.className }}
+  {{- with $d.kubernetesIngress.className }}
   ingressClassName: {{ . }}
   {{- end }}
-  {{- with .Values.egress.kubernetesIngress.tls }}
+  {{- with $d.kubernetesIngress.tls }}
   tls:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   rules:
-    - host: {{ required "horopter: egress.kubernetesIngress.host is required" .Values.egress.kubernetesIngress.host | quote }}
+    - host: {{ $host | quote }}
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ include "horopter.componentName" (dict "ctx" . "component" "egress") }}
+                name: {{ $service }}
                 port:
-                  number: {{ .Values.egress.port }}
+                  number: {{ $d.port }}
+{{- end }}
 {{- end }}

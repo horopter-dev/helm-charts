@@ -68,3 +68,125 @@ tests:
       - equal:
           path: spec.endpoints[0].interval
           value: 30s
+
+  - it: routes the ingress daemon through an HTTPRoute to its own Service
+    template: templates/httproute.yaml
+    set:
+      ingress.httpRoute.enabled: true
+      ingress.httpRoute.parentRefs: [{name: gw}]
+      ingress.httpRoute.hostnames: [w.example.test]
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: hp-horopter-ingress
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: ingress
+      - equal:
+          path: spec.hostnames
+          value: [w.example.test]
+      - equal:
+          path: spec.rules[0].backendRefs[0]
+          value: {name: hp-horopter-ingress, port: 8080}
+
+  - it: routes the ingress daemon through an Ingress to its own Service
+    template: templates/ingress.yaml
+    set:
+      ingress.kubernetesIngress.enabled: true
+      ingress.kubernetesIngress.host: w.example.test
+      ingress.kubernetesIngress.className: nginx
+      ingress.kubernetesIngress.tls: [{hosts: [w.example.test], secretName: w-tls}]
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: hp-horopter-ingress
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - equal:
+          path: spec.tls
+          value: [{hosts: [w.example.test], secretName: w-tls}]
+      - equal:
+          path: spec.rules[0].host
+          value: w.example.test
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service
+          value: {name: hp-horopter-ingress, port: {number: 8080}}
+
+  - it: refuses an ingress Ingress with no host
+    template: templates/ingress.yaml
+    set:
+      ingress.kubernetesIngress.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "ingress.kubernetesIngress.host is required"
+
+  - it: refuses an ingress HTTPRoute with no parentRefs
+    template: templates/httproute.yaml
+    set:
+      ingress.httpRoute.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "ingress.httpRoute.parentRefs is required"
+
+  # Helm reports the first template that fails, ingress.yaml; see optional_test.yaml.
+  - it: refuses an HTTPRoute and an Ingress together for the ingress daemon
+    template: templates/ingress.yaml
+    set:
+      ingress.httpRoute.enabled: true
+      ingress.httpRoute.parentRefs: [{name: gw}]
+      ingress.kubernetesIngress.enabled: true
+      ingress.kubernetesIngress.host: w.example.test
+    asserts:
+      - failedTemplate:
+          errorPattern: "at most one of ingress.httpRoute and ingress.kubernetesIngress"
+
+  - it: reports the ingress daemon's conflict, not its host, when both are on and no host is set
+    template: templates/ingress.yaml
+    set:
+      ingress.httpRoute.enabled: true
+      ingress.kubernetesIngress.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "at most one of ingress.httpRoute and ingress.kubernetesIngress"
+
+  - it: renders one HTTPRoute per daemon when both are routed
+    template: templates/httproute.yaml
+    set:
+      ingress.httpRoute.enabled: true
+      ingress.httpRoute.parentRefs: [{name: gw}]
+      egress.httpRoute.enabled: true
+      egress.httpRoute.parentRefs: [{name: gw}]
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: hp-horopter-ingress
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: hp-horopter-egress
+        documentIndex: 1
+
+  - it: exposes each daemon its own way
+    set:
+      ingress.kubernetesIngress.enabled: true
+      ingress.kubernetesIngress.host: w.example.test
+      egress.httpRoute.enabled: true
+      egress.httpRoute.parentRefs: [{name: gw}]
+    asserts:
+      - containsDocument:
+          kind: Ingress
+          apiVersion: networking.k8s.io/v1
+          name: hp-horopter-ingress
+        template: templates/ingress.yaml
+      - containsDocument:
+          kind: HTTPRoute
+          apiVersion: gateway.networking.k8s.io/v1
+          name: hp-horopter-egress
+        template: templates/httproute.yaml
