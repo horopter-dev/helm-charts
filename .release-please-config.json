@@ -23,12 +23,14 @@
     "charts/horopter": {
       "component": "horopter",
       "initial-version": "0.1.0",
-      "bootstrap-sha": "232501275022d057ae6b9909f5fc603ee684dcc9"
+      "bootstrap-sha": "232501275022d057ae6b9909f5fc603ee684dcc9",
+      "extra-files": [{ "type": "generic", "path": "README.md" }]
     },
     "charts/horopter-flux": {
       "component": "horopter-flux",
       "initial-version": "0.1.0",
-      "bootstrap-sha": "129ac0aa27bd18010b23023e9650566ceb792e29"
+      "bootstrap-sha": "129ac0aa27bd18010b23023e9650566ceb792e29",
+      "extra-files": [{ "type": "generic", "path": "README.md" }]
     }
   }
 }

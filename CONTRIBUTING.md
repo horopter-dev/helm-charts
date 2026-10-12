@@ -9,8 +9,10 @@ install it separately. Install the hooks once, then run the checks:
     prek install
     task check
 
-`task check` runs `helm lint --strict`, the unit tests, and a render with every optional
-resource on, schema-checked.
+`task check` runs `helm lint --strict`, the unit tests, a render with every optional
+resource on, schema-checked, and a check that each chart README installs its `Chart.yaml`
+version. Release Please moves that version in the release pull request, between the README's
+`x-release-please` markers; keep the install command inside them.
 
 ## Pull requests and releases
 
