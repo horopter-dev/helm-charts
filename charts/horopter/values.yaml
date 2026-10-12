@@ -34,6 +34,17 @@ ingress:
   # Requests only, so the scheduler accounts for each daemon; no limits by default.
   resources:
     requests: {cpu: 10m, memory: 32Mi}
+  # Exposure: at most one of httpRoute and kubernetesIngress. Expose the write endpoint only for
+  # producers outside the cluster.
+  httpRoute:
+    enabled: false
+    parentRefs: []
+    hostnames: []
+  kubernetesIngress:
+    enabled: false
+    className: ""
+    host: ""
+    tls: []
 
 egress:
   replicaCount: 1

@@ -13,3 +13,9 @@ egress:
       - name: gateway
         namespace: gateway
     hostnames: [horopter.example.test]
+ingress:
+  kubernetesIngress:
+    enabled: true
+    className: nginx
+    host: write.example.test
+    tls: [{hosts: [write.example.test], secretName: write-tls}]

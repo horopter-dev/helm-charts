@@ -109,7 +109,10 @@ imagePullSecrets:
 {{- end }}
 
 {{- define "horopter.checkExposure" -}}
-{{- if and .Values.egress.httpRoute.enabled .Values.egress.kubernetesIngress.enabled }}
-{{- fail "horopter: enable at most one of egress.httpRoute and egress.kubernetesIngress" }}
+{{- range $name := list "ingress" "egress" }}
+{{- $d := index $.Values $name }}
+{{- if and $d.httpRoute.enabled $d.kubernetesIngress.enabled }}
+{{- fail (printf "horopter: enable at most one of %s.httpRoute and %s.kubernetesIngress" $name $name) }}
+{{- end }}
 {{- end }}
 {{- end }}

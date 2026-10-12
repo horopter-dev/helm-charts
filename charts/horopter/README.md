@@ -34,6 +34,14 @@ same with `--role reader`, by the same command with different `args`. Each key i
 Do not use `horoctl admin bootstrap` outside development: its explicit-key flags are documented
 as development only.
 
+## Exposure
+
+Both daemons get a ClusterIP Service. Each can also be exposed by a Gateway API `HTTPRoute`
+(`<daemon>.httpRoute`: `parentRefs` required, `hostnames` optional) or an `Ingress`
+(`<daemon>.kubernetesIngress`: `host` required, `className` and `tls` optional), at most one
+per daemon. Ingress is the write endpoint, so expose it only for producers outside the
+cluster, such as CI runners.
+
 ## Values
 
 | value | default | meaning |
@@ -47,8 +55,8 @@ as development only.
 | `metrics.port` | `9464` | Prometheus scrape port, named `metrics` |
 | `ingress.replicaCount`, `egress.replicaCount` | `1` | replicas per daemon |
 | `ingress.resources`, `egress.resources` | requests 10m CPU, 32Mi | per daemon; no limits |
-| `egress.httpRoute.*` | off | a Gateway API `HTTPRoute` to egress |
-| `egress.kubernetesIngress.*` | off | an `Ingress` to egress; not with `httpRoute` |
+| `ingress.httpRoute.*`, `egress.httpRoute.*` | off | a Gateway API `HTTPRoute` to that daemon |
+| `ingress.kubernetesIngress.*`, `egress.kubernetesIngress.*` | off | an `Ingress` to that daemon; not with its `httpRoute` |
 | `serviceMonitor.enabled` | `false` | a `ServiceMonitor` over both daemons |
 | `migrate.backoffLimit` | `0` | retries of the migrate Job |
 | `migrate.activeDeadlineSeconds` | `600` | migrate Job timeout |
