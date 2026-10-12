@@ -5,9 +5,13 @@ its schema before each install and upgrade.
 
 ## Install
 
+<!-- x-release-please-start-version -->
+
     helm install horopter oci://ghcr.io/horopter-dev/charts/horopter \
-      --version 0.1.0 \
+      --version 0.7.0 \
       --set database.existingSecret=<secret holding the Postgres URI>
+
+<!-- x-release-please-end -->
 
 The chart creates no Secret. `database.existingSecret` must name a Secret whose `uri` key (or
 `database.key`) holds the connection string; CloudNativePG's generated application Secret has

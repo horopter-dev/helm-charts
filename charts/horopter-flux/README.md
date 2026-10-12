@@ -16,10 +16,14 @@ namespace you install into. The chart creates no Secret.
 
 Then install the chart against Horopter's ingress:
 
+<!-- x-release-please-start-version -->
+
     helm install horopter-flux oci://ghcr.io/horopter-dev/charts/horopter-flux \
-      --version 0.1.0 --namespace flux-system \
+      --version 0.3.0 --namespace flux-system \
       --set ingress.url=http://horopter-ingress.horopter.svc.cluster.local:8080 \
       --set ingress.existingSecret=horopter-flux
+
+<!-- x-release-please-end -->
 
 Installed as a HelmRelease, its own rollouts are recorded too. To rotate the key, update the
 Secret and restart the pod.

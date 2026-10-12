@@ -82,9 +82,35 @@ tasks:
               -schema-location default \
               -schema-location '{{.SCHEMAS}}'
 
+  readme-version:
+    desc: Check each chart README installs the version in its Chart.yaml
+    summary: >-
+      Every `--version` in a chart's README must equal its Chart.yaml version. Release Please moves both
+      in the release PR, through the README's x-release-please markers, so they only drift when someone
+      edits one by hand.
+    cmds:
+      - |
+        status=0
+        for chart in charts/*/; do
+          want="$(helm show chart "$chart" | awk '/^version:/ {print $2}')"
+          found="$(grep -oE -- '--version [^ ]+' "${chart}README.md" | awk '{print $2}' || true)"
+          if [[ -z "$found" ]]; then
+            echo "${chart}README.md: no --version in the install command" >&2
+            status=1
+          fi
+          for got in $found; do
+            if [[ "$got" != "$want" ]]; then
+              echo "${chart}README.md: installs --version $got, Chart.yaml is $want" >&2
+              status=1
+            fi
+          done
+        done
+        exit "$status"
+
   check:
-    desc: lint, test and validate
+    desc: lint, test, validate and check README versions
     cmds:
       - task: lint
       - task: test
       - task: validate
+      - task: readme-version
