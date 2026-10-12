@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/horopter-dev/helm-charts/compare/horopter-0.5.0...horopter-0.6.0) (2026-10-12)
+
+
+### Features
+
+* **horopter:** default to horopter v0.11.1 ([#22](https://github.com/horopter-dev/helm-charts/issues/22)) ([83fee08](https://github.com/horopter-dev/helm-charts/commit/83fee08343545caba5a8cba3cef2a88e92f02108))
+
 ## [0.5.0](https://github.com/horopter-dev/helm-charts/compare/horopter-0.4.0...horopter-0.5.0) (2026-10-10)
 
 
