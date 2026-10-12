@@ -1,0 +1,55 @@
+---
+suite: values are checked against the schema
+templates:
+  - templates/service.yaml
+release:
+  name: hp
+set:
+  database.existingSecret: db
+tests:
+  - it: accepts the defaults
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: accepts global, which a parent chart passes to every subchart
+    set:
+      global.imageRegistry: example.test
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: refuses a misspelt top-level key
+    set:
+      serviceMonitr.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "additional properties 'serviceMonitr' not allowed"
+
+  - it: refuses a misspelt exposure key
+    set:
+      ingress.httpRoute.enable: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/ingress/httpRoute': additional properties 'enable' not allowed"
+
+  - it: refuses a port that is not a number
+    set:
+      egress.port: http
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/egress/port': got string, want integer"
+
+  - it: refuses an unknown pull policy
+    set:
+      image.pullPolicy: Sometimes
+    asserts:
+      - failedTemplate:
+          errorPattern: "at '/image/pullPolicy': value must be one of"
+
+  - it: accepts limits as well as requests
+    set:
+      ingress.resources.limits.memory: 64Mi
+    asserts:
+      - hasDocuments:
+          count: 2

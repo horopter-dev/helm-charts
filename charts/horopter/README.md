@@ -48,6 +48,9 @@ cluster, such as CI runners.
 
 ## Values
 
+`values.schema.json` checks every value, so a misspelt key or a wrong type fails at install
+rather than being ignored.
+
 | value | default | meaning |
 | --- | --- | --- |
 | `image.registry` | `ghcr.io/horopter-dev` | registry holding `horopter-{ingress,egress,migrate}` |
