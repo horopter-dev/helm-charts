@@ -1,0 +1,58 @@
+---
+suite: the install notes
+templates:
+  - templates/NOTES.txt
+release:
+  name: hp
+  namespace: hz
+set:
+  database.existingSecret: db
+tests:
+  - it: gives both daemons' in-cluster URLs
+    asserts:
+      - matchRegexRaw:
+          pattern: 'ingress \(writes\): http://hp-horopter-ingress\.hz\.svc:8080'
+      - matchRegexRaw:
+          pattern: 'egress \(reads\):\s+http://hp-horopter-egress\.hz\.svc:8081'
+
+  - it: says neither daemon is exposed by default, and how to expose one
+    asserts:
+      - matchRegexRaw:
+          pattern: 'ingress: not exposed \(ingress\.httpRoute or ingress\.kubernetesIngress\)'
+      - matchRegexRaw:
+          pattern: 'egress:\s+not exposed \(egress\.httpRoute or egress\.kubernetesIngress\)'
+
+  - it: names an HTTPRoute's hostnames
+    set:
+      egress.httpRoute.enabled: true
+      egress.httpRoute.parentRefs: [{name: gw}]
+      egress.httpRoute.hostnames: [a.test, b.test]
+    asserts:
+      - matchRegexRaw:
+          pattern: 'egress:\s+HTTPRoute \(egress\.httpRoute\) for a\.test, b\.test'
+
+  - it: says an HTTPRoute with no hostnames takes its Gateway's
+    set:
+      ingress.httpRoute.enabled: true
+      ingress.httpRoute.parentRefs: [{name: gw}]
+    asserts:
+      - matchRegexRaw:
+          pattern: 'ingress: HTTPRoute \(ingress\.httpRoute\) for every hostname its Gateway serves'
+
+  - it: gives an Ingress's URL, https when it has TLS
+    set:
+      ingress.kubernetesIngress.enabled: true
+      ingress.kubernetesIngress.host: w.example.test
+      ingress.kubernetesIngress.tls: [{hosts: [w.example.test], secretName: w-tls}]
+      egress.kubernetesIngress.enabled: true
+      egress.kubernetesIngress.host: r.example.test
+    asserts:
+      - matchRegexRaw:
+          pattern: 'ingress: Ingress \(ingress\.kubernetesIngress\) at https://w\.example\.test'
+      - matchRegexRaw:
+          pattern: 'egress:\s+Ingress \(egress\.kubernetesIngress\) at http://r\.example\.test'
+
+  - it: links the install how-to
+    asserts:
+      - matchRegexRaw:
+          pattern: 'https://docs\.horopter\.dev/how-to/install-kubernetes'

@@ -1,0 +1,28 @@
+Horopter {{ include "horopter.tag" . }} is installed as release {{ .Release.Name }}.
+
+In the cluster:
+{{- range $name := list "ingress" "egress" }}
+{{- $service := include "horopter.componentName" (dict "ctx" $ "component" $name) }}
+  {{ printf "%-17s" (printf "%s (%s):" $name (ternary "writes" "reads" (eq $name "ingress"))) }}
+{{- printf " http://%s.%s.svc:%v" $service $.Release.Namespace (index $.Values $name).port }}
+{{- end }}
+
+Outside the cluster:
+{{- range $name := list "ingress" "egress" }}
+{{- $d := index $.Values $name }}
+  {{ printf "%-8s" (printf "%s:" $name) }}
+{{- if $d.httpRoute.enabled }}
+{{- $hosts := $d.httpRoute.hostnames | join ", " | default "every hostname its Gateway serves" }}
+{{- printf " HTTPRoute (%s.httpRoute) for %s" $name $hosts }}
+{{- else if $d.kubernetesIngress.enabled }}
+{{- $scheme := ternary "https" "http" (not (empty $d.kubernetesIngress.tls)) }}
+{{- printf " Ingress (%s.kubernetesIngress) at %s://%s" $name $scheme $d.kubernetesIngress.host }}
+{{- else }}
+{{- printf " not exposed (%s.httpRoute or %s.kubernetesIngress)" $name $name }}
+{{- end }}
+{{- end }}
+
+Nothing can write or read until you issue a tenant and its keys with horoctl; the chart
+README's Credentials section shows how.
+
+Install how-to: https://docs.horopter.dev/how-to/install-kubernetes
