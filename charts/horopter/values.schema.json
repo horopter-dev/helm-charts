@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "global": { "type": "object" },
+    "nameOverride": { "type": "string" },
+    "fullnameOverride": { "type": "string" },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "registry": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string" },
+        "pullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": { "name": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "existingSecret": { "type": "string" },
+        "key": { "type": "string", "minLength": 1 }
+      }
+    },
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "tracesEndpoint": { "type": "string" } }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "port": { "$ref": "#/definitions/port" } }
+    },
+    "ingress": { "$ref": "#/definitions/daemon" },
+    "egress": { "$ref": "#/definitions/daemon" },
+    "serviceMonitor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "labels": { "type": "object", "additionalProperties": { "type": "string" } },
+        "interval": { "type": "string" }
+      }
+    },
+    "migrate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backoffLimit": { "type": "integer", "minimum": 0 },
+        "activeDeadlineSeconds": { "type": "integer", "minimum": 1 }
+      }
+    }
+  },
+  "definitions": {
+    "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+    "daemon": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "replicaCount": { "type": "integer", "minimum": 0 },
+        "port": { "$ref": "#/definitions/port" },
+        "resources": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "requests": { "type": "object" },
+            "limits": { "type": "object" },
+            "claims": { "type": "array" }
+          }
+        },
+        "httpRoute": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "parentRefs": { "type": "array", "items": { "type": "object" } },
+            "hostnames": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "kubernetesIngress": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "className": { "type": "string" },
+            "host": { "type": "string" },
+            "tls": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "hosts": { "type": "array", "items": { "type": "string" } },
+                  "secretName": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
