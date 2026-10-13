@@ -19,7 +19,7 @@ Then install the chart against Horopter's ingress:
 <!-- x-release-please-start-version -->
 
     helm install horopter-flux oci://ghcr.io/horopter-dev/charts/horopter-flux \
-      --version 0.3.0 --namespace flux-system \
+      --version 0.4.0 --namespace flux-system \
       --set ingress.url=http://horopter-ingress.horopter.svc.cluster.local:8080 \
       --set ingress.existingSecret=horopter-flux
 
