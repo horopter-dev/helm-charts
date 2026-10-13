@@ -3,7 +3,7 @@ apiVersion: v2
 name: horopter
 description: Horopter, a change-event store, as two daemons against an existing Postgres.
 type: application
-version: 0.8.0
+version: 0.9.0
 appVersion: "v0.14.0"
 home: https://github.com/horopter-dev/horopter
 # helm package takes sources[0] as the OCI image source annotation, which GHCR uses to link

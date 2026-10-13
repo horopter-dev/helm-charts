@@ -8,7 +8,7 @@ its schema before each install and upgrade.
 <!-- x-release-please-start-version -->
 
     helm install horopter oci://ghcr.io/horopter-dev/charts/horopter \
-      --version 0.8.0 \
+      --version 0.9.0 \
       --set database.existingSecret=<secret holding the Postgres URI>
 
 <!-- x-release-please-end -->
