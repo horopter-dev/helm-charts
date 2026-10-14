@@ -4,7 +4,7 @@ name: horopter-flux
 description: horopter-flux, which records Flux commits and HelmRelease rollouts in Horopter.
 type: application
 version: 0.4.0
-appVersion: "v0.14.0"
+appVersion: "v0.14.1"
 home: https://github.com/horopter-dev/horopter
 # helm package takes sources[0] as the OCI image source annotation, which GHCR uses to link
 # the chart's package to a repository: this one, which publishes it.
