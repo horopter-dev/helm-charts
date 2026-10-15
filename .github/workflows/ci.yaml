@@ -8,10 +8,15 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check:
     name: lint, unit tests and schema
     runs-on: ubuntu-26.04
+    timeout-minutes: 5
     permissions:
       contents: read
     steps:
@@ -47,6 +52,8 @@ jobs:
   install:
     name: install into kind
     runs-on: ubuntu-26.04
+    # Above its own waits: Postgres rollout 180s, then helm install --wait 5m.
+    timeout-minutes: 10
     needs: check
     permissions:
       contents: read
