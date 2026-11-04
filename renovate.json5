@@ -38,6 +38,13 @@
       minimumReleaseAge: "14 days",
     },
     {
+      // Shared with every repository Renovate runs mise in: two pull requests for one mise.toml
+      // conflict as soon as one merges. Here the kind rule below takes the only pin Renovate
+      // updates, so this groups nothing until another is added.
+      matchManagers: ["mise"],
+      groupName: "mise tools",
+    },
+    {
       // Action SHAs are Dependabot's; only runs-on images are Renovate's.
       matchManagers: ["github-actions"],
       matchDatasources: ["!github-runners"],
