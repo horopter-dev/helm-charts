@@ -30,6 +30,7 @@ jobs:
         env:
           HELM_SHA256: 86584a54def73570558f66f5111cc53dfed56689637ae32c1201205d494f54fb
           KUBECONFORM_SHA256: 9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883
+          TASK_SHA256: 680859dbb4d881a9c72d4d9a8f510825450849af8567deacd7302c01124416fb
         run: |
           set -euo pipefail
           curl -fsSL -o helm.tgz https://get.helm.sh/helm-v4.3.0-linux-amd64.tar.gz
@@ -39,8 +40,11 @@ jobs:
             https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz
           echo "${KUBECONFORM_SHA256}  kc.tgz" | sha256sum -c -
           sudo tar -xzf kc.tgz -C /usr/local/bin kubeconform
-          sudo snap install task --classic
-          rm -f helm.tgz kc.tgz
+          curl -fsSL -o task.tgz \
+            https://github.com/go-task/task/releases/download/v3.54.0/task_linux_amd64.tar.gz
+          echo "${TASK_SHA256}  task.tgz" | sha256sum -c -
+          sudo tar -xzf task.tgz -C /usr/local/bin task
+          rm -f helm.tgz kc.tgz task.tgz
 
       - uses: j178/prek-action@44924fe9ef4a6f88253c4b6b1bf11c689d3ce53d # v3.1.0
         env:
