@@ -19,6 +19,7 @@
     { "type": "ci", "hidden": true },
     { "type": "chore", "hidden": true }
   ],
+  "exclude-paths": ["knowledge", "decisions", "quality"],
   "packages": {
     "charts/horopter": {
       "component": "horopter",
