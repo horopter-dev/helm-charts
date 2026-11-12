@@ -9,7 +9,7 @@
   // from horopter-dev/infrastructure's workflow, whose cron is the only schedule; do not add a
   // `schedule` here.
   //
-  // helm and kubeconform are pinned in ci.yaml with a SHA-256 each, which Renovate cannot
+  // helm, kubeconform and task are pinned in ci.yaml with a SHA-256 each, which Renovate cannot
   // update, so they move by hand, ci.yaml and mise.toml together.
   extends: ["config:recommended", "customManagers:githubActionsVersions"],
   enabledManagers: ["mise", "github-actions", "custom.regex"],
@@ -51,7 +51,7 @@
       enabled: false,
     },
     {
-      // helm and kubeconform move by hand with their checksums; task floats at latest.
+      // helm, kubeconform and task move by hand with their checksums.
       matchManagers: ["mise"],
       matchDepNames: ["helm", "kubeconform", "task"],
       enabled: false,
